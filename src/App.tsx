@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useNavigate, Navigate, useParams, useLocation } from 'react-router-dom';
 import { ShoppingCart, User as UserIcon, Menu, X, Package, Truck, Phone, LogOut, ArrowLeft, Check, AlertCircle, Edit, Trash2, Plus, Save, Filter, Tag, Layers, Search, MapPin, Clock, Mail, ChevronRight, Star, Mic, MessageSquare, Bot, Upload, Download, Globe, Loader2, Info, Zap, Map, Facebook, CreditCard, Banknote, Wallet, Lock, Navigation, Link as LinkIcon, FileJson, CheckCircle2 } from 'lucide-react';
 import { useStore } from './store';
-import { VoiceAssistant } from './components/VoiceAssistant';
+import { VoiceAssistant } from '../components/VoiceAssistant';
 import { GoogleGenAI, Type } from "@google/genai";
-import { Product, CategoryItem, Order } from './types';
+import { Product, CategoryItem, Order } from '../types';
 
 // Rate for Euro to BGN
 const BGN_RATE = 1.95583;
@@ -335,7 +335,8 @@ const Home = () => {
            </div>
         </div>
       </div>
-      
+
+      {/* Services/Features Strip - Lifted up to overlap Hero */}
       <div className="container mx-auto px-4 -mt-24 relative z-20">
         <div className="grid md:grid-cols-3 gap-6">
            {[
@@ -353,7 +354,8 @@ const Home = () => {
            ))}
         </div>
       </div>
-      
+
+      {/* AI Assistant Promo Section */}
       <div className="container mx-auto px-4 py-20">
          <div className="bg-neutral-900 rounded-3xl overflow-hidden relative shadow-2xl">
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=2832&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-color-dodge"></div>
@@ -422,6 +424,8 @@ const Home = () => {
             </div>
          </div>
       </div>
+
+      {/* Featured Products */}
       <div className="py-12">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-end mb-12">
@@ -445,6 +449,8 @@ const Home = () => {
           </div>
         </div>
       </div>
+
+      {/* CTA Section */}
       <div className="container mx-auto px-4 mb-20">
         <div className="bg-neutral-900 rounded-3xl p-12 md:p-20 text-center relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600 rounded-full blur-[100px] opacity-20"></div>
@@ -468,6 +474,7 @@ const Home = () => {
     </div>
   );
 };
+
 const Catalog = () => {
   const { products, categories } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -642,374 +649,609 @@ const ProductDetails = () => {
   const { id } = useParams();
   const { products, addToCart } = useStore();
   const product = products.find(p => p.id === id);
+  const navigate = useNavigate();
+  const [qty, setQty] = useState(1);
 
-  if (!product) return <div className="container mx-auto px-4 py-20 text-center text-slate-500">Продуктът не е намерен.</div>;
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-20 text-center">
+        <h2 className="text-2xl font-bold text-gray-700">Продуктът не е намерен</h2>
+        <Link to="/products" className="text-orange-600 hover:underline mt-4 inline-block">Обратно към каталога</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-12 animate-fade-in">
-      <Link to="/products" className="inline-flex items-center gap-2 text-slate-500 hover:text-orange-500 font-bold uppercase text-xs mb-8 transition">
-        <ArrowLeft size={16} /> Обратно към каталога
-      </Link>
-      <div className="bg-white rounded-3xl shadow-xl overflow-hidden grid md:grid-cols-2 gap-0 border border-slate-100">
-        <div className="h-[400px] md:h-[600px] bg-slate-50 relative group overflow-hidden">
-          <img src={product.image} alt={product.name} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
-          {product.stock === 0 && (
-             <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-                 <span className="text-white font-bold border-2 border-white px-6 py-2 uppercase tracking-widest text-xl">Изчерпан</span>
-             </div>
-          )}
-        </div>
-        <div className="p-8 md:p-16 flex flex-col justify-center">
-           <div className="flex items-center gap-3 mb-4">
-              <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold uppercase tracking-wide">{product.category}</span>
-              <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-bold uppercase tracking-wide">{product.brand}</span>
-           </div>
-           <h1 className="text-3xl md:text-5xl font-heading font-bold text-neutral-900 mb-6 leading-tight">{product.name}</h1>
-           <p className="text-slate-600 text-lg leading-relaxed mb-8">{product.description}</p>
-           
-           <div className="flex items-baseline gap-3 mb-8 pb-8 border-b border-slate-100">
-              <span className="text-4xl md:text-5xl font-heading font-bold text-neutral-900">€{product.price.toFixed(2)}</span>
-              <span className="text-xl text-slate-400 font-medium">/ {(product.price * 1.95583).toFixed(2)} лв.</span>
-           </div>
-           
-           <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={() => addToCart(product)}
-                disabled={product.stock === 0}
-                className="flex-1 bg-neutral-900 text-white py-4 rounded-xl font-bold uppercase tracking-wide hover:bg-orange-600 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
-              >
-                <ShoppingCart size={20} className="group-hover:scale-110 transition"/> {product.stock > 0 ? 'Добави в количка' : 'Изчерпан'}
-              </button>
-              <div className="flex-1 border border-slate-200 rounded-xl flex items-center justify-center gap-2 text-slate-600 font-bold py-4">
-                 <CheckCircle2 size={20} className="text-green-500"/> Наличност: {product.stock} бр.
+      <button onClick={() => navigate(-1)} className="flex items-center text-slate-500 hover:text-orange-600 mb-8 transition font-medium">
+        <ArrowLeft size={20} className="mr-2" /> Назад към каталога
+      </button>
+
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+        <div className="grid md:grid-cols-2 gap-0">
+          {/* Image Section */}
+          <div className="h-[400px] md:h-auto bg-gray-100 relative group overflow-hidden">
+            <img src={product.image} alt={product.name} className="w-full h-full object-cover transition duration-700 group-hover:scale-105" />
+          </div>
+
+          {/* Details Section */}
+          <div className="p-8 md:p-16 flex flex-col justify-center">
+            <div className="flex gap-3 mb-6">
+               <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider">
+                 {product.category}
+               </span>
+               <span className="bg-neutral-900 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider">
+                 {product.brand}
+               </span>
+            </div>
+            
+            <h1 className="text-3xl md:text-4xl font-heading font-bold text-neutral-900 mb-4 leading-tight">{product.name}</h1>
+            
+            <div className="text-5xl font-heading font-bold text-orange-600 mb-2">
+              €{product.price.toFixed(2)}
+              <span className="text-lg text-slate-400 font-normal ml-2">/ бр.</span>
+            </div>
+             <div className="text-xl text-slate-500 font-bold mb-8">
+               ≈ {(product.price * BGN_RATE).toFixed(2)} лв.
+            </div>
+
+            <div className="flex items-center gap-2 mb-8 p-3 bg-slate-50 rounded-lg w-fit">
+              {product.stock > 0 ? (
+                <span className="flex items-center text-green-600 text-sm font-bold uppercase tracking-wide">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                  Наличен ({product.stock} бр.)
+                </span>
+              ) : (
+                <span className="flex items-center text-red-500 text-sm font-bold uppercase tracking-wide">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                  Изчерпан
+                </span>
+              )}
+            </div>
+
+            <p className="text-slate-600 leading-relaxed mb-10 text-lg">
+              {product.description}
+            </p>
+
+            <div className="border-t border-slate-100 pt-10 mt-auto">
+              <div className="flex flex-col sm:flex-row gap-5">
+                <div className="flex items-center bg-slate-100 rounded-full p-1 w-fit">
+                  <button 
+                    onClick={() => setQty(Math.max(1, qty - 1))}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm text-neutral-900 hover:bg-orange-100 transition"
+                  >-</button>
+                  <span className="w-16 text-center font-bold text-lg">{qty}</span>
+                  <button 
+                    onClick={() => setQty(qty + 1)}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm text-neutral-900 hover:bg-orange-100 transition"
+                  >+</button>
+                </div>
+                
+                <button 
+                  onClick={() => { addToCart(product, qty); setQty(1); }}
+                  className="flex-1 bg-gradient-to-r from-neutral-900 to-neutral-800 text-white px-8 py-4 rounded-full font-bold uppercase tracking-wider hover:from-orange-600 hover:to-red-600 transition shadow-lg flex items-center justify-center gap-3 transform active:scale-95 touch-manipulation"
+                >
+                  <ShoppingCart size={20} />
+                  Добави в количка
+                </button>
               </div>
-           </div>
-           
-           <div className="mt-8 pt-8 border-t border-slate-50 grid grid-cols-2 gap-4 text-sm text-slate-500">
-               <div className="flex items-center gap-2"><Truck size={16}/> Доставка до 24ч</div>
-               <div className="flex items-center gap-2"><MapPin size={16}/> Склад: с. Вакарел</div>
-               <div className="flex items-center gap-2"><CreditCard size={16}/> Сигурно плащане</div>
-               <div className="flex items-center gap-2"><Phone size={16}/> Консултация</div>
-           </div>
+            </div>
+            
+            <div className="mt-8 flex items-center gap-3 text-sm text-slate-500">
+               <Truck size={18} className="text-orange-500" />
+               <span>Доставка до 24 часа за София</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-const Login = () => {
-  const { login, user } = useStore();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+const Checkout = () => {
+  const { cart, updateCartQuantity, removeFromCart, placeOrder, checkoutFormData, setCheckoutFormData, lastOrder, clearLastOrder } = useStore();
   const navigate = useNavigate();
+  const [loadingLoc, setLoadingLoc] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  
+  // Map State
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<any>(null);
+  const markerInstance = useRef<any>(null);
+  const [tempLocation, setTempLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
 
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // Initialize Map Logic
   useEffect(() => {
-    if (user) navigate('/');
-  }, [user, navigate]);
+    if (showMapModal && mapRef.current && !mapInstance.current) {
+        // Default to Sofia (approx center)
+        const defaultLat = 42.6977;
+        const defaultLng = 23.3219;
+
+        const map = L.map(mapRef.current).setView([defaultLat, defaultLng], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        mapInstance.current = map;
+
+        // FIX: Invalidate size after modal transition to prevent gray areas
+        setTimeout(() => {
+             map.invalidateSize();
+        }, 200);
+
+        // Click Handler
+        map.on('click', async (e: any) => {
+            const { lat, lng } = e.latlng;
+            updateMapSelection(lat, lng);
+        });
+
+        // Try geolocation initially if no address set
+        if (!checkoutFormData.address) {
+             navigator.geolocation.getCurrentPosition((pos) => {
+                 const { latitude, longitude } = pos.coords;
+                 map.setView([latitude, longitude], 13);
+                 updateMapSelection(latitude, longitude);
+             });
+        }
+    }
+    
+    return () => {
+        // Cleanup not strictly necessary in this modal flow as we reuse or destroy
+        if (!showMapModal && mapInstance.current) {
+             mapInstance.current.remove();
+             mapInstance.current = null;
+             markerInstance.current = null;
+        }
+    }
+  }, [showMapModal]);
+
+  const updateMapSelection = async (lat: number, lng: number) => {
+      // 1. Add/Move Marker
+      if (markerInstance.current) {
+          markerInstance.current.setLatLng([lat, lng]);
+      } else {
+          markerInstance.current = L.marker([lat, lng]).addTo(mapInstance.current);
+      }
+
+      // 2. Reverse Geocode
+      setLoadingLoc(true);
+      try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await response.json();
+          let address = `Координати: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          if (data && data.address) {
+              const city = data.address.city || data.address.town || data.address.village || 'София';
+              const road = data.address.road || '';
+              const number = data.address.house_number || '';
+              const suburb = data.address.suburb || '';
+              const postcode = data.address.postcode || '';
+              address = `${road} ${number}, ${suburb}, ${postcode} ${city}`;
+          }
+          setTempLocation({ lat, lng, address });
+      } catch (e) {
+          console.error(e);
+          setTempLocation({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
+      } finally {
+          setLoadingLoc(false);
+      }
+  };
+
+  const confirmLocation = () => {
+      if (tempLocation) {
+          setCheckoutFormData({ ...checkoutFormData, address: tempLocation.address });
+          setShowMapModal(false);
+      }
+  };
+
+  // Standalone Geolocation for the Form Button
+  const getFormLocation = () => {
+      if (!navigator.geolocation) {
+          alert("Геолокацията не се поддържа.");
+          return;
+      }
+      setLoadingLoc(true);
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+              const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+              const data = await response.json();
+              if (data && data.address) {
+                   const city = data.address.city || data.address.town || data.address.village || 'София';
+                   const road = data.address.road || '';
+                   const number = data.address.house_number || '';
+                   const suburb = data.address.suburb || '';
+                   const postcode = data.address.postcode || '';
+                   const address = `${road} ${number}, ${suburb}, ${postcode} ${city}`;
+                   setCheckoutFormData(prev => ({ ...prev, address }));
+              } else {
+                   setCheckoutFormData(prev => ({ ...prev, address: `${latitude}, ${longitude}` }));
+              }
+          } catch(e) {
+              setCheckoutFormData(prev => ({ ...prev, address: `${latitude}, ${longitude}` }));
+          } finally {
+              setLoadingLoc(false);
+          }
+      }, (err) => {
+          console.error(err);
+          setLoadingLoc(false);
+      }, { enableHighAccuracy: true });
+  }
+
+  const getUserLocation = () => {
+      if (!navigator.geolocation) {
+          alert("Геолокацията не се поддържа.");
+          return;
+      }
+      setLoadingLoc(true);
+      navigator.geolocation.getCurrentPosition(
+          (pos) => {
+              const { latitude, longitude } = pos.coords;
+              if (mapInstance.current) {
+                  mapInstance.current.setView([latitude, longitude], 14);
+                  updateMapSelection(latitude, longitude);
+              }
+              setLoadingLoc(false);
+          },
+          (err) => {
+              console.error(err);
+              alert("Не успяхме да намерим локацията ви.");
+              setLoadingLoc(false);
+          },
+          { enableHighAccuracy: true }
+      );
+  };
+
+  // If cart empty and not done, prompt to shop
+  if (cart.length === 0 && !lastOrder) {
+     return (
+        <div className="container mx-auto px-4 py-32 text-center animate-fade-in">
+          <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-8 text-slate-300">
+            <ShoppingCart size={40} />
+          </div>
+          <h2 className="text-3xl font-heading font-bold text-neutral-900 mb-4 uppercase">Вашата количка е празна</h2>
+          <p className="text-slate-500 mb-8 max-w-md mx-auto">Разгледайте нашия каталог и добавете качествени строителни материали.</p>
+          <Link to="/products" className="inline-block bg-orange-600 text-white px-8 py-3 rounded-full font-bold uppercase tracking-wide hover:bg-orange-700 transition shadow-lg">
+            Към магазина
+          </Link>
+        </div>
+     )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await login(email, password);
-    setLoading(false);
+    await placeOrder(checkoutFormData);
   };
 
-  return (
-    <div className="container mx-auto px-4 py-20 flex justify-center items-center min-h-[60vh]">
-       <div className="w-full max-w-md bg-white p-10 rounded-3xl shadow-2xl border border-slate-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-500 to-red-600"></div>
-          <h2 className="text-3xl font-heading font-bold text-center mb-2 uppercase">Вход</h2>
-          <p className="text-center text-slate-400 mb-8 text-sm">Влезте в своя профил за по-бързи поръчки</p>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
-             <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Email Адрес</label>
-                <div className="relative">
-                    <UserIcon size={18} className="absolute left-4 top-3.5 text-slate-400"/>
-                    <input 
-                      type="email" 
-                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition" 
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      required
-                    />
-                </div>
-             </div>
-             <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Парола</label>
-                <div className="relative">
-                    <Lock size={18} className="absolute left-4 top-3.5 text-slate-400"/>
-                    <input 
-                      type="password" 
-                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition" 
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      required
-                    />
-                </div>
-             </div>
-             <button 
-               type="submit" 
-               disabled={loading}
-               className="w-full bg-neutral-900 text-white py-4 rounded-xl font-bold uppercase tracking-wide hover:bg-orange-600 transition shadow-lg disabled:opacity-70 flex items-center justify-center gap-2"
-             >
-               {loading ? <Loader2 className="animate-spin" size={20}/> : 'Вход'}
-             </button>
-          </form>
-          
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-             <p className="text-slate-500 text-sm">
-                Нямате профил? <a href="#" className="text-orange-600 font-bold hover:underline">Регистрация</a>
-             </p>
-             <p className="text-xs text-slate-400 mt-4">
-                За демо достъп: admin@demo.com (Admin) или user@demo.com
-             </p>
-          </div>
-       </div>
-    </div>
-  );
-};
+  if (lastOrder) {
+    return (
+      <div className="container mx-auto px-4 py-32 text-center animate-fade-in">
+        <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-green-100">
+          <Check size={48} strokeWidth={3} />
+        </div>
+        <h2 className="text-4xl font-heading font-bold text-neutral-900 mb-4 uppercase">Поръчката е приета!</h2>
+        <div className="bg-slate-50 inline-block px-6 py-2 rounded-lg border border-slate-200 mb-8">
+           <span className="text-slate-500 font-medium mr-2">Номер на поръчка:</span>
+           <span className="font-mono font-bold text-neutral-900 text-lg">#{lastOrder.id.slice(-6)}</span>
+        </div>
+        <p className="text-slate-600 mb-10 max-w-md mx-auto">
+          Ще се свържем с вас на <strong>{lastOrder.phone}</strong> за потвърждение на доставката до адрес.
+        </p>
+        <button onClick={() => { clearLastOrder(); navigate('/'); }} className="inline-block bg-neutral-900 text-white px-10 py-3 rounded-full font-bold uppercase tracking-wide hover:bg-orange-600 transition">
+          Обратно към началото
+        </button>
+      </div>
+    );
+  }
 
-const Contacts = () => {
   return (
     <div className="container mx-auto px-4 py-12 animate-fade-in">
-        <h1 className="text-4xl md:text-5xl font-heading font-bold text-center mb-12 uppercase">Контакти</h1>
+      <h1 className="text-4xl font-heading font-bold mb-8 text-neutral-900 uppercase">Завършване на поръчката</h1>
+      
+      <div className="grid lg:grid-cols-2 gap-12">
         
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-neutral-900 text-white rounded-3xl p-10 relative overflow-hidden shadow-2xl">
-                 <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600 rounded-full blur-[80px] opacity-20"></div>
-                 <h2 className="text-2xl font-bold mb-8 uppercase flex items-center gap-3 relative z-10"><Package className="text-orange-500"/> Централен Офис</h2>
-                 
-                 <ul className="space-y-6 relative z-10">
-                     <li className="flex items-start gap-4">
-                         <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                             <MapPin className="text-orange-500" size={20} />
-                         </div>
-                         <div>
-                             <p className="font-bold text-sm text-slate-400 uppercase tracking-widest mb-1">Адрес</p>
-                             <p className="text-lg">Индустриална Зона<br/>с. Вакарел, България</p>
-                         </div>
-                     </li>
-                     <li className="flex items-start gap-4">
-                         <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                             <Phone className="text-orange-500" size={20} />
-                         </div>
-                         <div>
-                             <p className="font-bold text-sm text-slate-400 uppercase tracking-widest mb-1">Телефон</p>
-                             <p className="text-lg">+359 888 123 456</p>
-                             <p className="text-sm text-slate-500">Пон - Пет: 08:00 - 18:00</p>
-                         </div>
-                     </li>
-                     <li className="flex items-start gap-4">
-                         <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                             <Mail className="text-orange-500" size={20} />
-                         </div>
-                         <div>
-                             <p className="font-bold text-sm text-slate-400 uppercase tracking-widest mb-1">Email</p>
-                             <p className="text-lg">office@naistroitrans.bg</p>
-                         </div>
-                     </li>
-                 </ul>
-            </div>
-            
-            <div className="bg-white rounded-3xl p-2 shadow-2xl h-[400px] md:h-auto border border-slate-100 relative overflow-hidden group">
-                 <iframe 
-                   title="Map"
-                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2936.568297787494!2d23.71444431546416!3d42.55694447917404!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x40aa80b8744d0813%3A0x6295556276707833!2z0JLQsNC60LDRgNC10Ls!5e0!3m2!1sen!2sbg!4v1645000000000!5m2!1sen!2sbg" 
-                   width="100%" 
-                   height="100%" 
-                   style={{border:0, borderRadius: '1.5rem'}} 
-                   allowFullScreen 
-                   loading="lazy"
-                   className="grayscale group-hover:grayscale-0 transition duration-700"
-                 ></iframe>
-                 <div className="absolute bottom-6 left-6 bg-white px-4 py-2 rounded-lg shadow-lg text-xs font-bold uppercase tracking-wide flex items-center gap-2 pointer-events-none">
-                     <Navigation size={14} className="text-orange-600"/> Локация на склада
-                 </div>
+        {/* RIGHT COLUMN (Desktop) / TOP (Mobile) - Products List */}
+        <div className="order-2 lg:order-2 h-fit">
+           <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8 sticky top-24">
+              <h3 className="text-xl font-heading font-bold mb-6 border-b border-slate-100 pb-4 uppercase flex justify-between items-center">
+                  <span>Вашата Количка</span>
+                  <span className="text-orange-500 text-lg">{cart.length} продукта</span>
+              </h3>
+              
+              <div className="space-y-4 mb-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {cart.map(item => (
+                    <div key={item.id} className="flex gap-4 items-start">
+                        <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-grow">
+                            <h4 className="font-bold text-sm text-neutral-900 leading-tight mb-1">{item.name}</h4>
+                            <div className="text-xs text-slate-500 mb-2">€{item.price} / бр.</div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center bg-slate-100 rounded px-1">
+                                    <button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="px-2 hover:text-orange-600 font-bold">-</button>
+                                    <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                                    <button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="px-2 hover:text-orange-600 font-bold">+</button>
+                                </div>
+                                <button onClick={() => removeFromCart(item.id)} className="text-xs text-red-400 hover:text-red-600 underline">Изтрий</button>
+                            </div>
+                        </div>
+                        <div className="font-bold text-neutral-900">
+                            €{(item.price * item.quantity).toFixed(2)}
+                        </div>
+                    </div>
+                ))}
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-2 text-sm text-slate-600">
+                  <div className="flex justify-between">
+                      <span>Междинна сума</span>
+                      <span className="font-bold">€{total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                      <span>ДДС (20%)</span>
+                      <span className="font-bold">Включено</span>
+                  </div>
+                  <div className="flex justify-between text-lg pt-2 border-t border-slate-100 mt-2 text-neutral-900">
+                      <span className="font-heading font-bold uppercase">Общо за плащане</span>
+                      <span className="font-heading font-bold text-orange-600">€{total.toFixed(2)}</span>
+                  </div>
+                  <div className="text-right text-xs text-slate-400">
+                      ≈ {(total * BGN_RATE).toFixed(2)} лв.
+                  </div>
+              </div>
+           </div>
+        </div>
+
+        {/* LEFT COLUMN - Input Form */}
+        <div className="order-1 lg:order-1">
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-12">
+                <h2 className="text-2xl font-heading font-bold mb-8 text-neutral-900 uppercase border-b pb-4">Данни за Доставка</h2>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Име и Фамилия</label>
+                    <input 
+                        required 
+                        type="text" 
+                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition outline-none font-medium text-neutral-900"
+                        value={checkoutFormData.name}
+                        onChange={e => setCheckoutFormData({...checkoutFormData, name: e.target.value})}
+                    />
+                    </div>
+                    <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Телефон</label>
+                    <input 
+                        required 
+                        type="tel" 
+                        placeholder="0888 123 456"
+                        className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition outline-none font-medium text-neutral-900"
+                        value={checkoutFormData.phone}
+                        onChange={e => setCheckoutFormData({...checkoutFormData, phone: e.target.value})}
+                    />
+                    </div>
+                </div>
+                
+                <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Адрес за доставка</label>
+                        <div className="flex gap-2">
+                            <button 
+                                type="button" 
+                                onClick={getFormLocation}
+                                disabled={loadingLoc}
+                                className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition flex items-center gap-1 shadow-sm border border-blue-100 disabled:opacity-50"
+                            >
+                                {loadingLoc ? <Loader2 size={14} className="animate-spin"/> : <Navigation size={14} />} 
+                                Текуща локация
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => setShowMapModal(true)}
+                                className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition flex items-center gap-1 shadow-sm border border-orange-100"
+                            >
+                                <Map size={14} /> Карта
+                            </button>
+                        </div>
+                    </div>
+                    <textarea 
+                    required 
+                    rows={3}
+                    placeholder="кв. Витоша, ул. Иван Вазов 10, вх. А..."
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition outline-none font-medium text-neutral-900"
+                    value={checkoutFormData.address}
+                    onChange={e => setCheckoutFormData({...checkoutFormData, address: e.target.value})}
+                    />
+                    <p className="text-xs text-orange-500 mt-2 font-medium flex items-center gap-1">
+                    <Truck size={12}/> Доставяме само в София и областта
+                    </p>
+                </div>
+
+                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 flex items-start gap-4">
+                    <div className="bg-orange-100 p-2 rounded-lg text-orange-600 shrink-0">
+                    <Package size={24} />
+                    </div>
+                    <div>
+                    <h4 className="font-heading font-bold text-neutral-900 uppercase mb-1">Плащане при доставка</h4>
+                    <p className="text-sm text-slate-600">Заплащате цялата сума на шофьора при получаване на стоката. Можете да платите в брой или с карта.</p>
+                    </div>
+                </div>
+
+                <button type="submit" className="w-full bg-gradient-to-r from-neutral-900 to-neutral-800 text-white py-4 rounded-xl font-bold uppercase tracking-wider hover:from-orange-600 hover:to-red-600 transition shadow-xl transform hover:-translate-y-1">
+                    Завърши Поръчката
+                </button>
+                </form>
             </div>
         </div>
+      </div>
+
+      {/* Interactive Map Modal */}
+      {showMapModal && (
+        <div className="fixed inset-0 bg-neutral-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh]">
+                <div className="bg-neutral-900 p-4 flex justify-between items-center text-white shrink-0">
+                    <h3 className="font-heading font-bold uppercase flex items-center gap-2"><MapPin size={20} className="text-orange-500"/> Изберете Локация</h3>
+                    <button onClick={() => setShowMapModal(false)}><X size={20}/></button>
+                </div>
+                
+                {/* Real Interactive Map Container */}
+                <div className="relative flex-grow h-[400px]">
+                     <div ref={mapRef} className="absolute inset-0 z-10" />
+                     <button 
+                         onClick={getUserLocation}
+                         disabled={loadingLoc}
+                         className="absolute bottom-4 right-4 z-[9999] bg-white text-neutral-900 p-3 rounded-full shadow-2xl border-2 border-orange-100 hover:bg-orange-50 hover:scale-105 transition active:scale-95"
+                         title="Намери ме"
+                     >
+                         {loadingLoc ? <Loader2 size={24} className="animate-spin text-orange-600" /> : <Navigation size={24} className="text-blue-600 fill-blue-600" />}
+                     </button>
+                </div>
+
+                {/* Confirmation Footer */}
+                <div className="p-6 bg-slate-50 border-t border-slate-200 shrink-0">
+                   <div className="mb-4">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Избран Адрес:</label>
+                       <div className="bg-white p-3 rounded-xl border border-slate-200 text-sm font-medium text-neutral-900 min-h-[3rem] flex items-center">
+                           {loadingLoc ? <span className="flex items-center gap-2 text-slate-400"><Loader2 size={16} className="animate-spin"/> Зареждане...</span> : (tempLocation?.address || "Кликнете върху картата за да изберете адрес")}
+                       </div>
+                   </div>
+                   <div className="flex gap-3">
+                       <button 
+                           onClick={() => setShowMapModal(false)} 
+                           className="flex-1 py-3 rounded-xl border border-slate-300 font-bold text-slate-600 hover:bg-white transition"
+                       >
+                           Отказ
+                       </button>
+                       <button 
+                           onClick={confirmLocation}
+                           disabled={!tempLocation || loadingLoc}
+                           className="flex-1 py-3 rounded-xl bg-neutral-900 text-white font-bold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                       >
+                           Потвърди Адреса
+                       </button>
+                   </div>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const Checkout = () => {
-    const { cart, checkoutFormData, setCheckoutFormData, placeOrder, updateCartQuantity, removeFromCart, lastOrder, clearLastOrder } = useStore();
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-
-    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+const Login = () => {
+    const { login } = useStore();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const navigate = useNavigate();
     
-    // Clear last order on mount to hide success screen if revisited
-    useEffect(() => {
-        // clearLastOrder is called when user navigates away usually, but we check here
-    }, []);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            await placeOrder(checkoutFormData);
-            setStep(2);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (lastOrder && step === 2) {
-        return (
-            <div className="container mx-auto px-4 py-20 text-center animate-fade-in">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8 text-green-600 shadow-xl shadow-green-100">
-                    <CheckCircle2 size={48} />
-                </div>
-                <h2 className="text-4xl md:text-5xl font-heading font-bold text-neutral-900 mb-4 uppercase">Благодарим ви!</h2>
-                <p className="text-xl text-slate-500 mb-2">Поръчка <span className="font-mono font-bold text-neutral-900">#{lastOrder.id.slice(-6)}</span> е приета успешно.</p>
-                <p className="text-slate-400 mb-10 max-w-md mx-auto">Ще получите обаждане за потвърждение на доставката до адрес: {lastOrder.address}.</p>
-                <Link 
-                    to="/" 
-                    onClick={clearLastOrder}
-                    className="inline-block bg-neutral-900 text-white px-10 py-4 rounded-xl font-bold uppercase tracking-wide hover:bg-orange-600 transition shadow-lg"
-                >
-                    Обратно към началото
-                </Link>
-            </div>
-        );
-    }
-
-    if (cart.length === 0) {
-        return (
-            <div className="container mx-auto px-4 py-32 text-center animate-fade-in">
-                <ShoppingCart size={64} className="mx-auto mb-6 text-slate-200" />
-                <h2 className="text-3xl font-heading font-bold text-slate-300 uppercase mb-6">Количката е празна</h2>
-                <Link to="/products" className="text-orange-600 font-bold uppercase hover:underline">Разгледай продуктите</Link>
-            </div>
-        );
-    }
-
     return (
-        <div className="container mx-auto px-4 py-12 animate-fade-in">
-            <h1 className="text-4xl font-heading font-bold mb-10 uppercase">Завършване на поръчката</h1>
-            
-            <div className="grid md:grid-cols-2 gap-12">
-                {/* Form */}
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 h-fit">
-                    <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
-                        <div className="w-8 h-8 rounded-full bg-neutral-900 text-white flex items-center justify-center font-bold">1</div>
-                        <h2 className="text-xl font-bold uppercase">Данни за доставка</h2>
-                    </div>
-                    
-                    <form id="checkout-form" onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Име и Фамилия</label>
-                            <input 
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition font-medium" 
-                                required 
-                                value={checkoutFormData.name} 
-                                onChange={e => setCheckoutFormData({...checkoutFormData, name: e.target.value})}
-                                placeholder="Иван Иванов"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Телефон</label>
-                            <input 
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition font-medium" 
-                                required 
-                                value={checkoutFormData.phone} 
-                                onChange={e => setCheckoutFormData({...checkoutFormData, phone: e.target.value})}
-                                placeholder="0888 123 456"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Адрес за доставка</label>
-                            <textarea 
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition font-medium" 
-                                required 
-                                rows={3}
-                                value={checkoutFormData.address} 
-                                onChange={e => setCheckoutFormData({...checkoutFormData, address: e.target.value})}
-                                placeholder="гр. София, кв. Младост..."
-                            />
-                        </div>
-                    </form>
-                </div>
-                
-                {/* Summary */}
-                <div className="space-y-6">
-                     <div className="bg-neutral-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600 rounded-full blur-[80px] opacity-20"></div>
-                        <div className="relative z-10">
-                            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/10">
-                                <div className="w-8 h-8 rounded-full bg-white text-neutral-900 flex items-center justify-center font-bold">2</div>
-                                <h2 className="text-xl font-bold uppercase">Преглед</h2>
-                            </div>
-
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2 mb-8">
-                                {cart.map(item => (
-                                    <div key={item.id} className="flex gap-4 items-center bg-white/5 p-3 rounded-xl border border-white/5">
-                                        <div className="w-16 h-16 bg-white rounded-lg overflow-hidden shrink-0">
-                                            <img src={item.image} alt="" className="w-full h-full object-cover"/>
-                                        </div>
-                                        <div className="flex-grow">
-                                            <h4 className="font-bold text-sm leading-tight mb-1">{item.name}</h4>
-                                            <div className="text-xs text-slate-400">€{item.price.toFixed(2)} / бр.</div>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <div className="flex items-center gap-2 bg-neutral-800 rounded-lg p-1">
-                                                <button onClick={() => updateCartQuantity(item.id, item.quantity - 1)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded transition">-</button>
-                                                <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
-                                                <button onClick={() => updateCartQuantity(item.id, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded transition">+</button>
-                                            </div>
-                                            <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-300 text-xs transition">Премахни</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="space-y-2 border-t border-white/10 pt-4">
-                                <div className="flex justify-between text-slate-300">
-                                    <span>Междинна сума</span>
-                                    <span>€{total.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-slate-300">
-                                    <span>Доставка</span>
-                                    <span>Безплатна</span>
-                                </div>
-                                <div className="flex justify-between text-2xl font-bold text-white pt-4 border-t border-white/10 mt-2">
-                                    <span>Общо</span>
-                                    <span>€{total.toFixed(2)}</span>
-                                </div>
-                                <div className="text-right text-sm text-slate-400">
-                                    ~ {(total * 1.95583).toFixed(2)} лв.
-                                </div>
-                            </div>
-                            
-                            <button 
-                                type="submit" 
-                                form="checkout-form"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-4 rounded-xl font-bold uppercase tracking-wide mt-8 hover:shadow-[0_0_20px_rgba(234,88,12,0.4)] transition disabled:opacity-70 flex items-center justify-center gap-2"
-                            >
-                                {loading ? <Loader2 className="animate-spin" /> : 'Поръчай сега'}
-                            </button>
-                        </div>
-                     </div>
-                     
-                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4">
-                         <Info className="text-blue-500 shrink-0 mt-1"/>
-                         <p className="text-sm text-slate-600 leading-relaxed">
-                            Плащането се извършва <strong>при доставка (Наложен платеж)</strong>. Можете да платите в брой или с карта на нашия шофьор.
-                         </p>
-                     </div>
+        <div className="container mx-auto px-4 py-20 flex justify-center">
+            <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                <h2 className="text-3xl font-heading font-bold mb-6 text-center text-neutral-900 uppercase">Вход</h2>
+                <form onSubmit={async (e) => { e.preventDefault(); await login(email, password); navigate('/'); }} className="space-y-4">
+                    <input type="email" placeholder="Email" className="w-full px-4 py-3 rounded-xl border bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none" value={email} onChange={e => setEmail(e.target.value)} />
+                    <input type="password" placeholder="Password" className="w-full px-4 py-3 rounded-xl border bg-slate-50 focus:ring-2 focus:ring-orange-500 outline-none" value={password} onChange={e => setPassword(e.target.value)} />
+                    <button className="w-full bg-neutral-900 text-white py-3 rounded-xl font-bold uppercase hover:bg-orange-600 transition">Влез</button>
+                </form>
+                <div className="mt-6 p-4 bg-orange-50 rounded-xl text-xs text-orange-800 border border-orange-100">
+                    <strong>Съвет за Админи:</strong> Използвайте email съдържащ думата "admin" (напр. <code>admin@demo.bg</code>) за достъп до Админ Панела.
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
+const Contacts = () => (
+    <div className="container mx-auto px-4 py-20 text-center">
+         <h1 className="text-4xl font-heading font-bold mb-8 text-neutral-900 uppercase">Контакти</h1>
+         <div className="max-w-2xl mx-auto bg-white p-12 rounded-3xl shadow-lg border border-slate-100">
+             <div className="space-y-6 text-lg text-slate-600">
+                 <p className="flex items-center justify-center gap-3"><Phone className="text-orange-500"/> +359 888 123 456</p>
+                 <p className="flex items-center justify-center gap-3"><Mail className="text-orange-500"/> office@naistroitrans.bg</p>
+                 <p className="flex items-center justify-center gap-3"><MapPin className="text-orange-500"/> с. Вакарел, Индустриална зона</p>
+             </div>
+         </div>
+    </div>
+)
+// New Modal Component for Order Details
+const OrderDetailsModal = ({ order, onClose }: { order: Order, onClose: () => void }) => {
+  if (!order) return null;
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative z-10 animate-fade-in-up flex flex-col">
+         
+         {/* Header */}
+         <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50 sticky top-0">
+            <div>
+               <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-2xl font-heading font-bold uppercase">Поръчка #{order.id}</h3>
+                  <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'delivered' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                      {order.status === 'delivered' ? 'Доставена' : 'Обработва се'}
+                  </span>
+               </div>
+               <p className="text-slate-500 text-sm">{new Date(order.date).toLocaleString('bg-BG')}</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition"><X size={24}/></button>
+         </div>
+
+         {/* Content */}
+         <div className="p-8 space-y-8">
+            {/* Customer Info */}
+            <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <UserIcon size={14}/> Клиент
+                   </div>
+                   <div className="font-bold text-lg">{order.customerName}</div>
+                   <div className="text-slate-500">{order.phone}</div>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <MapPin size={14}/> Доставка до
+                   </div>
+                   <div className="text-neutral-900 leading-relaxed">{order.address}</div>
+                </div>
+            </div>
+
+            {/* Items List */}
+            <div>
+               <h4 className="font-bold uppercase text-sm text-slate-400 tracking-widest mb-4 border-b border-slate-100 pb-2">Продукти ({order.items.length})</h4>
+               <div className="space-y-3">
+                  {order.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-4 py-2">
+                          <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-300">
+                             <Package size={20} />
+                          </div>
+                          <div className="flex-grow">
+                             <div className="font-bold text-neutral-900">{item.name || item.product_name}</div>
+                             <div className="text-xs text-slate-500">Код: {item.product_id || item.id}</div>
+                          </div>
+                          <div className="text-right">
+                             <div className="font-bold">x{item.quantity}</div>
+                             <div className="text-slate-500 text-sm">€{Number(item.price).toFixed(2)}</div>
+                          </div>
+                      </div>
+                  ))}
+               </div>
+            </div>
+         </div>
+
+         {/* Footer / Total */}
+         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center sticky bottom-0">
+             <div className="text-sm text-slate-500">Начин на плащане: <span className="font-bold text-neutral-900">Наложен платеж</span></div>
+             <div className="text-right">
+                <div className="text-xs text-slate-400 uppercase font-bold">Обща стойност</div>
+                <div className="text-3xl font-heading font-bold text-neutral-900">€{order.total.toFixed(2)}</div>
+             </div>
+         </div>
+      </div>
+    </div>
+  );
+};
 const Admin = () => {
     const { user, orders, products, updateOrderStatus, deleteProduct, addProduct, updateProduct, importProducts } = useStore();
     const [tab, setTab] = useState<'orders' | 'products'>('orders');
@@ -1025,9 +1267,12 @@ const Admin = () => {
     const [foundProducts, setFoundProducts] = useState<Partial<Product>[]>([]);
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
     const [statusLog, setStatusLog] = useState<string[]>([]);
-    
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     // Form State
     const [prodForm, setProdForm] = useState<Partial<Product>>({});
+
+    const [importMode, setImportMode] = useState<'bulk' | 'single'>('bulk'); 
+    
 
     if (user?.role !== 'admin') return <Navigate to="/" />;
 
@@ -1054,59 +1299,109 @@ const Admin = () => {
     };
 
     const addLog = (msg: string) => setStatusLog(prev => [...prev, msg]);
-
-    const handleSmartFetch = async () => {
+const handleSmartFetch = async () => {
         if (!importUrl) return;
         setImportStep('fetching');
         setStatusLog([]);
-        addLog(`Initiating connection to ${importUrl}...`);
+        
 
         try {
-            // 1. Fetch via CORS Proxy
-            addLog("Bypassing CORS via proxy...");
+            // ===============================================
+            // MODE A: SINGLE PRODUCT (PHP SCRAPER) - FAST ⚡
+            // ===============================================
+            if (importMode === 'single') {
+                addLog(`Connecting via CORS Proxy...`);
+                
+                // 1. Fetch HTML via Proxy
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(importUrl)}`;
+                const res = await fetch(proxyUrl);
+                const proxyData = await res.json();
+                
+                if (!proxyData.contents) throw new Error("No content received from proxy");
+                
+                // 2. Client-Side DOM Parsing
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(proxyData.contents, "text/html");
+
+                // Basic Heuristics for common Bulgarian sites (Angro, Praktiker, etc.)
+                // This replaces the PHP logic
+                const title = doc.querySelector('h1')?.innerText?.trim() || "Unknown Product";
+                const priceText = doc.querySelector('.price, .product-price, .price-new')?.textContent || "0";
+                const priceBGN = parseFloat(priceText.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0;
+                
+                // Convert BGN to EUR (approx)
+                const priceEUR = priceBGN > 0 ? Number((priceBGN / 1.95583).toFixed(2)) : 0;
+                
+                // Find Image
+                let image = "";
+                const imgEl = doc.querySelector('#image, #zoom1, .product-image img');
+                if(imgEl) image = imgEl.getAttribute('src') || "";
+                if(!image) image = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || "";
+
+                const productData = [{
+                    name: title,
+                    price: priceEUR,
+                    image: image,
+                    category: 'General', // Default
+                    brand: 'Generic',    // Default
+                    stock: 100,
+                    description: "Imported via Client Scraper"
+                }];
+
+                addLog(`Success! Scraped: ${title}`);
+                setFoundProducts(productData);
+                setSelectedProducts([0]);
+                
+                setTimeout(() => setImportStep('review'), 800);
+                return;
+            }
+            // ===============================================
+            // MODE B: BULK IMPORT (GEMINI AI) - SMART 🧠
+            // ===============================================
+            addLog(`Initiating AI analysis for Bulk Import...`);
+
+            // 1. Fetch HTML via Proxy (to bypass CORS)
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(importUrl)}`;
             const res = await fetch(proxyUrl);
-            const data = await res.json();
+            const proxyData = await res.json();
             
-            if (!data.contents) throw new Error("No content received from proxy");
+            if (!proxyData.contents) throw new Error("No content received from proxy");
             
-            const htmlContent = data.contents;
-            addLog(`Received ${htmlContent.length} bytes of HTML data.`);
+            const htmlContent = proxyData.contents;
+            addLog(`Received ${htmlContent.length} bytes of HTML.`);
             
             // 2. AI Parsing
-            addLog("Initializing Gemini AI for structural analysis...");
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            addLog("Initializing Gemini AI...");
+            const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GOOGLE_API_KEY });
             
-            // Truncate HTML to avoid token limits (focus on body mostly)
+            // Limit HTML size but keep enough for list items
             const cleanHtml = htmlContent.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
                                          .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gm, "")
-                                         .substring(0, 100000); // Limit context
+                                         .substring(0, 500000); 
 
-            addLog("Sending HTML structure to AI for product extraction...");
-            
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash', // Fast model for parsing
+                model: 'gemini-2.5-flash', 
                 contents: `
-                   Analyze the following HTML source code from an ecommerce site.
-                   Extract a list of products found on this page.
-                   For each product, identify:
-                   - Name (in Bulgarian if present)
-                   - Price (numeric only). IMPORTANT: If price is in BGN (лв), divide by 1.95583 to get EUR. Return the EUR value.
-                   - Image URL (absolute path preferred)
-                   - Category (infer from context)
-                   - Brand (infer from name or context)
-                   - Description (short summary)
+                   TASK: You are looking at a category/list page.
+                   Extract ALL products listed in the grid/list.
                    
-                   Return ONLY a raw JSON array. No markdown formatting.
-                   JSON Format: [{"name": "...", "price": 10.5, "image": "...", "category": "...", "brand": "...", "stock": 100, "description": "..."}]
+                   REQUIREMENTS:
+                   - Name (Bulgarian preferred)
+                   - Price (numeric). If BGN (лв), divide by 1.95583 -> Return EUR.
+                   - Category (Infer from context)
+                   - Brand (Infer from name)
+                   - Description: Keep it short (1 sentence).
+                   - Limit: Extract up to 20 items.
+                   
+                   Return ONLY raw JSON array.
+                   Format: [{"name": "...", "price": 10.5, "image": "...", "category": "...", "brand": "...", "stock": 100, "description": "..."}]
                    
                    HTML Source:
                    ${cleanHtml}
                 `
             });
 
-            let jsonStr = response.text.trim();
-            // Cleanup markdown code blocks if AI adds them
+            let jsonStr = response.text().trim();
             if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
             if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
             if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
@@ -1114,22 +1409,21 @@ const Admin = () => {
             const products = JSON.parse(jsonStr);
             
             if (Array.isArray(products) && products.length > 0) {
-                addLog(`Successfully identified ${products.length} products!`);
+                addLog(`AI identified ${products.length} products.`);
                 setFoundProducts(products);
-                setSelectedProducts(products.map((_, i) => i)); // Select all by default
+                setSelectedProducts(products.map((_, i) => i)); 
                 setTimeout(() => setImportStep('review'), 1000);
             } else {
-                throw new Error("AI could not identify any products structure in this HTML.");
+                throw new Error("AI could not identify products.");
             }
 
         } catch (e: any) {
             console.error(e);
             addLog(`Error: ${e.message}`);
-            alert(`Import Failed: ${e.message}`);
+            // alert(`Import Failed: ${e.message}`); // Optional: Un-comment if you want alerts
             setImportStep('input');
         }
     };
-
     const finalizeImport = async () => {
         const toImport = foundProducts.filter((_, i) => selectedProducts.includes(i));
         await importProducts(toImport as Product[]);
@@ -1158,49 +1452,79 @@ const Admin = () => {
              </div>
 
              {/* ORDERS TAB */}
-             {tab === 'orders' && (
-                <div className="space-y-4">
-                    {orders.map(order => (
-                        <div key={order.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between gap-4">
-                           <div>
-                               <div className="flex items-center gap-3 mb-2">
-                                   <span className="font-mono font-bold text-slate-400">#{order.id.slice(-6)}</span>
-                                   <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'delivered' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
-                                       {order.status === 'delivered' ? 'Доставена' : 'Обработва се'}
-                                   </span>
-                               </div>
-                               <h3 className="font-bold text-lg">{order.customerName}</h3>
-                               <p className="text-sm text-slate-500 mb-2">{order.phone} • {order.address}</p>
-                               <div className="text-sm text-slate-600">
-                                   {order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}
-                               </div>
-                           </div>
-                           <div className="flex flex-col items-end gap-2">
-                               <div className="font-bold text-xl">€{order.total.toFixed(2)}</div>
-                               {order.status !== 'delivered' && (
-                                   <button 
-                                      onClick={() => updateOrderStatus(order.id, 'delivered')}
-                                      className="bg-neutral-900 text-white px-4 py-2 rounded-lg text-sm font-bold uppercase hover:bg-green-600 transition"
-                                   >
-                                      Маркирай доставена
-                                   </button>
-                               )}
-                           </div>
-                        </div>
-                    ))}
-                    {orders.length === 0 && <div className="text-center text-slate-400 py-12">Няма поръчки</div>}
-                </div>
-             )}
+          {tab === 'orders' && (
+   <div className="space-y-4">
+       {/* List of Orders */}
+       {orders.map(order => (
+           <div 
+             key={order.id} 
+             onClick={() => setSelectedOrder(order)} // <--- CLICK HANDLER
+             className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between gap-4 cursor-pointer hover:shadow-md transition group"
+           >
+              <div>
+                  <div className="flex items-center gap-3 mb-2">
+                      <span className="font-mono font-bold text-slate-400 group-hover:text-orange-500 transition">#{order.id}</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'delivered' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                          {order.status === 'delivered' ? 'Доставена' : 'Обработва се'}
+                      </span>
+                  </div>
+                  {/* Now mapping correctly from backend fields */}
+                  <h3 className="font-bold text-lg">{order.customerName || 'Неизвестен клиент'}</h3>
+                  <p className="text-sm text-slate-500 mb-2">{order.phone} • {order.address}</p>
+                  
+                  {/* Quick preview of items count */}
+                  <div className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                      <Layers size={12}/> {order.items?.length || 0} артикула
+                  </div>
+              </div>
+              
+              <div className="flex flex-col items-end gap-2 justify-center">
+                  <div className="font-bold text-xl">€{order.total.toFixed(2)}</div>
+                  {order.status !== 'delivered' && (
+                      <button 
+                         onClick={(e) => {
+                             e.stopPropagation(); // Prevent opening modal when clicking button
+                             updateOrderStatus(order.id, 'delivered');
+                         }}
+                         className="bg-neutral-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-green-600 transition"
+                      >
+                         Маркирай доставена
+                      </button>
+                  )}
+              </div>
+           </div>
+       ))}
+       {orders.length === 0 && <div className="text-center text-slate-400 py-12">Няма поръчки</div>}
+       
+       {/* RENDER MODAL */}
+       {selectedOrder && (
+           <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+       )}
+   </div>
+)}
 
              {/* PRODUCTS TAB */}
              {tab === 'products' && (
                 <div>
-                    <div className="flex justify-end gap-3 mb-6">
-                        <button onClick={handleAddClick} className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold uppercase text-sm hover:bg-orange-700 transition shadow-lg">
-                            <Plus size={16} /> Добави Продукт
+                <div className="flex justify-end gap-3 mb-6">
+                        <button onClick={handleAddClick} className="flex items-center gap-2 bg-neutral-100 text-neutral-900 px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-neutral-200 transition">
+                            <Plus size={16} /> Ръчно
                         </button>
-                        <button onClick={() => { setIsImporting(true); setImportStep('input'); setImportUrl(''); }} className="flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 rounded-lg font-bold uppercase text-sm hover:bg-neutral-800 transition shadow-lg">
-                            <Upload size={16} /> Импорт
+                        
+                        {/* NEW: Single Product Import */}
+                 <button 
+                            onClick={() => { setIsImporting(true); setImportMode('single'); setImportStep('input'); setImportUrl(''); }} 
+                            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-orange-700 transition shadow-lg"
+                        >
+                            <LinkIcon size={16} /> Единичен Продукт (Fast)
+                        </button>
+
+                        {/* EXISTING: Bulk Import */}
+                        <button 
+                            onClick={() => { setIsImporting(true); setImportMode('bulk'); setImportStep('input'); setImportUrl(''); }} 
+                            className="flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-neutral-800 transition shadow-lg"
+                        >
+                            <Upload size={16} /> Масов Импорт
                         </button>
                     </div>
 
@@ -1359,9 +1683,9 @@ const Admin = () => {
                                     <h3 className="text-2xl font-bold text-neutral-900 mb-2">AI Agent is working...</h3>
                                     <div className="w-full max-w-md bg-slate-900 rounded-xl p-4 font-mono text-xs text-green-400 h-32 overflow-y-auto custom-scrollbar shadow-inner">
                                         {statusLog.map((log, i) => (
-                                            <div key={i} className="mb-1">> {log}</div>
+                                            <div key={i} className="mb-1"> {log}</div>
                                         ))}
-                                        <div className="animate-pulse">> _</div>
+                                        <div className="animate-pulse">_</div>
                                     </div>
                                 </div>
                             )}

@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from './App';
-import { AppProvider } from './store';
+import { App } from './App';       // Now finds src/App.tsx
+import { AppProvider } from './store'; // Now finds src/store.tsx
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
