@@ -8,7 +8,12 @@ export interface Term {
   attributeId: string; // Links to parent Attribute
   name: string; // e.g. "Red", "Concrete", "25kg"
 }
-
+export interface GalleryImage {
+  id: string;
+  url: string;
+  name: string;
+  uploadedAt: string;
+}
 
 export interface Product {
   id: string;

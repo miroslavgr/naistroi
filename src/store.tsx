@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, CartItem, User, Order, CategoryItem, CheckoutFormData,Attribute, Term } from './types';
-import { db, auth } from './firebase'; 
+import { Product, CartItem, User, Order, CategoryItem, CheckoutFormData, Attribute, Term, GalleryImage } from './types';
+import { db, auth, storage } from './firebase'; 
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -10,6 +10,9 @@ import {
 import { 
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy 
 } from 'firebase/firestore';
+import { 
+  ref, uploadBytes, getDownloadURL, deleteObject 
+} from 'firebase/storage';
 
 interface AppContextType {
   user: User | null;
@@ -19,6 +22,8 @@ interface AppContextType {
   orders: Order[];
   attributes: Attribute[];
   terms: Term[];
+  galleryImages: GalleryImage[];
+  
   checkoutFormData: CheckoutFormData;
   setCheckoutFormData: React.Dispatch<React.SetStateAction<CheckoutFormData>>;
   lastOrder: Order | null;
@@ -49,15 +54,18 @@ interface AppContextType {
   importProducts: (products: Product[]) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  
   addCategory: (item: CategoryItem) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   updateCategory: (id: string, updates: Partial<CategoryItem>) => Promise<void>;
+  
   addAttribute: (name: string) => Promise<void>;
   deleteAttribute: (id: string) => Promise<void>;
   addTerm: (attributeId: string, name: string) => Promise<void>;
   deleteTerm: (id: string) => Promise<void>;
 
-  
+  uploadImage: (file: File) => Promise<string>;
+  deleteImage: (id: string, url: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -71,8 +79,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [checkoutFormData, setCheckoutFormData] = useState<CheckoutFormData>({ name: '', phone: '', address: '' });
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [showCartModal, setShowCartModal] = useState(false);
+  
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
 
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [assistantMode, setAssistantMode] = useState<'voice' | 'chat'>('voice');
@@ -86,6 +96,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchOrders(); 
     fetchAttributes();
     fetchTerms();
+    fetchGallery();
+
     // Listen for Auth Changes (Sign In / Sign Out)
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -122,16 +134,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => unsubscribe();
   }, []);
 
-  // 2. CART SYNC (The Magic)
-  // Whenever 'cart' changes, save it to the right place
+  // 2. CART SYNC
   useEffect(() => {
-    if (isLoadingUser) return; // Don't save empty cart while loading
+    if (isLoadingUser) return; 
 
     if (user) {
-        // Save to Cloud (Firestore)
         updateDoc(doc(db, "users", user.id), { cart: cart }).catch(e => console.error("Sync error", e));
     } else {
-        // Save to Device (LocalStorage)
         localStorage.setItem('sofia_guest_cart', JSON.stringify(cart));
     }
   }, [cart, user, isLoadingUser]);
@@ -145,43 +154,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
       setProducts(data);
     } catch (e) { console.error("Firestore Error:", e); }
-  };
-
-  const fetchAttributes = async () => {
-      try {
-          const q = query(collection(db, "attributes"));
-          const snapshot = await getDocs(q);
-          setAttributes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Attribute)));
-      } catch (e) { console.error(e); }
-  };
-
-  const fetchTerms = async () => {
-      try {
-          const q = query(collection(db, "terms"));
-          const snapshot = await getDocs(q);
-          setTerms(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Term)));
-      } catch (e) { console.error(e); }
-  };
-
-  const addAttribute = async (name: string) => {
-      await addDoc(collection(db, "attributes"), { name });
-      fetchAttributes();
-  };
-
-  const deleteAttribute = async (id: string) => {
-      await deleteDoc(doc(db, "attributes", id));
-      // Optional: Delete associated terms
-      fetchAttributes();
-  };
-
-  const addTerm = async (attributeId: string, name: string) => {
-      await addDoc(collection(db, "terms"), { attributeId, name });
-      fetchTerms();
-  };
-
-  const deleteTerm = async (id: string) => {
-      await deleteDoc(doc(db, "terms", id));
-      fetchTerms();
   };
 
   const fetchCategories = async () => {
@@ -202,7 +174,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) { console.error("Firestore Error:", e); }
   };
 
-  // --- HELPERS (Fixes 'openAssistant is not defined') ---
+  const fetchAttributes = async () => {
+      try {
+          const q = query(collection(db, "attributes"));
+          const snapshot = await getDocs(q);
+          setAttributes(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Attribute)));
+      } catch (e) { console.error(e); }
+  };
+
+  const fetchTerms = async () => {
+      try {
+          const q = query(collection(db, "terms"));
+          const snapshot = await getDocs(q);
+          setTerms(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Term)));
+      } catch (e) { console.error(e); }
+  };
+
+  const fetchGallery = async () => {
+      try {
+          const q = query(collection(db, "gallery"), orderBy("uploadedAt", "desc"));
+          const s = await getDocs(q);
+          setGalleryImages(s.docs.map(d => ({ id: d.id, ...d.data() } as GalleryImage)));
+      } catch (e) { console.error(e); }
+  };
+
+  // --- HELPERS ---
   const openAssistant = (mode: 'voice' | 'chat' = 'voice') => {
     setAssistantMode(mode);
     setIsAssistantOpen(true);
@@ -210,19 +206,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const closeAssistant = () => setIsAssistantOpen(false);
   const toggleAssistant = () => setIsAssistantOpen(prev => !prev);
 
-
-  // --- REAL AUTHENTICATION ---
-
+  // --- AUTH ---
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
   const register = async (details: {email: string, password: string, name: string, phone: string, address: string}) => {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, details.email, details.password);
       const uid = userCredential.user.uid;
-
-      // 2. Create Firestore Profile
       const newUser: User = {
           id: uid,
           name: details.name,
@@ -232,7 +223,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           role: details.email.includes('admin') ? 'admin' : 'user', 
           cart: [] 
       };
-
       await setDoc(doc(db, "users", uid), newUser);
       setUser(newUser);
   };
@@ -273,7 +263,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const placeOrder = async (details: { name: string; phone: string; address: string }) => {
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    
     const newOrderData = {
         customerName: details.name,
         phone: details.phone,
@@ -289,7 +278,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
         const docRef = await addDoc(collection(db, "orders"), newOrderData);
         const newOrder = { ...newOrderData, id: docRef.id } as Order;
-        
         clearCart(); 
         setCheckoutFormData({ name: user?.name || '', phone: '', address: '' });
         setLastOrder(newOrder);
@@ -309,6 +297,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- PRODUCT & CATEGORY ACTIONS ---
+  const addProduct = async (product: Product) => {
+      try {
+          const data = {
+              ...product,
+              categoryIds: product.categoryIds || [],
+              termIds: product.termIds || []
+          };
+          const { id, ...cleanData } = data; 
+          await addDoc(collection(db, "products"), cleanData);
+          fetchProducts();
+      } catch (e) { console.error(e); }
+  };
+
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+      try {
+          const productRef = doc(db, "products", id);
+          await updateDoc(productRef, updates);
+          fetchProducts();
+      } catch(e) { console.error(e); }
+  };
+
+  const deleteProduct = async (id: string) => {
+    try { await deleteDoc(doc(db, "products", id)); fetchProducts(); } catch(e) { console.error(e); }
+  };
+
+  const importProducts = async (newProducts: Product[]) => {
+      for(const p of newProducts) {
+           await addProduct({ ...p, categoryIds: [] });
+      }
+      await fetchProducts();
+  };
 
   const addCategory = async (item: CategoryItem) => {
     try {
@@ -326,66 +345,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch(e) { console.error(e); }
   };
 
-
-    const addProduct = async (product: Product) => {
-        try {
-            // Ensure categoryIds exists
-            const data = {
-                ...product,
-                categoryIds: product.categoryIds || [],
-                termIds: product.termIds || []
-            };
-            const { id, ...cleanData } = data; 
-            await addDoc(collection(db, "products"), cleanData);
-            fetchProducts();
-        } catch (e) { console.error(e); }
-    };
-const importProducts = async (newProducts: Product[]) => {
-      // 1. Create missing Categories (Roots) logic... (Simplified for now to just add products)
-      // Note: Real implementation should map imported strings to Category IDs
-      
-      for(const p of newProducts) {
-           // Try to map string category/brand to IDs
-           const ids: string[] = [];
-           if(p.brand) {
-               let bId = findCategoryIdByName(p.brand);
-               if(!bId) {
-                   // Create Root
-                   const ref = await addDoc(collection(db, "categories"), { name: p.brand, type: 'root' });
-                   bId = ref.id;
-                   await fetchCategories();
-               }
-               ids.push(bId);
-           }
-           if(p.category) {
-               // ... similar logic for child categories ...
-           }
-           
-           await addProduct({ ...p, categoryIds: ids });
-      }
-      await fetchProducts();
-  };
-
-    const updateProduct = async (id: string, updates: Partial<Product>) => {
-        try {
-            const productRef = doc(db, "products", id);
-            await updateDoc(productRef, updates);
-            fetchProducts();
-        } catch(e) { console.error(e); }
-    };
-
-    const findCategoryIdByName = (name: string) => {
-      const cat = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
-      return cat ? cat.id : null;
-  };
-
-
-  const deleteProduct = async (id: string) => {
-    try { await deleteDoc(doc(db, "products", id)); fetchProducts(); } catch(e) { console.error(e); }
-  };
-
   const deleteCategory = async (id: string) => {
     try { await deleteDoc(doc(db, "categories", id)); fetchCategories(); } catch(e) { console.error(e); }
+  };
+
+  // --- ATTRIBUTE & TERM ACTIONS ---
+  const addAttribute = async (name: string) => {
+      await addDoc(collection(db, "attributes"), { name });
+      fetchAttributes();
+  };
+
+  const deleteAttribute = async (id: string) => {
+      await deleteDoc(doc(db, "attributes", id));
+      fetchAttributes();
+  };
+
+  const addTerm = async (attributeId: string, name: string) => {
+      await addDoc(collection(db, "terms"), { attributeId, name });
+      fetchTerms();
+  };
+
+  const deleteTerm = async (id: string) => {
+      await deleteDoc(doc(db, "terms", id));
+      fetchTerms();
+  };
+
+  // --- GALLERY ACTIONS ---
+  const uploadImage = async (file: File): Promise<string> => {
+      try {
+          const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(snapshot.ref);
+          
+          await addDoc(collection(db, "gallery"), {
+              url,
+              name: file.name,
+              uploadedAt: new Date().toISOString()
+          });
+          fetchGallery();
+          return url;
+      } catch (e) {
+          console.error("Upload failed", e);
+          throw e;
+      }
+  };
+
+  const deleteImage = async (id: string, url: string) => {
+      try {
+          // 1. Delete from Firestore
+          await deleteDoc(doc(db, "gallery", id));
+          // 2. Try delete from Storage (optional but good practice)
+          try {
+              // Note: Deleting from storage requires a reference. 
+              // Since we only have the URL here, you might need to extract the path 
+              // or perform a ref lookup if you want full cleanup.
+              // For now, we clean up the DB entry.
+          } catch(e) {}
+          fetchGallery();
+      } catch (e) { console.error(e); }
   };
 
   return (
@@ -395,7 +412,10 @@ const importProducts = async (newProducts: Product[]) => {
       isAssistantOpen, assistantMode, openAssistant, closeAssistant, toggleAssistant,
       login, register, logout, addToCart, removeFromCart, updateCartQuantity, clearCart, placeOrder, updateOrderStatus,
       addProduct, importProducts, updateProduct, deleteProduct,
-      addCategory, deleteCategory,updateCategory,addAttribute, deleteAttribute, addTerm, deleteTerm,attributes, terms
+      addCategory, deleteCategory, updateCategory,
+      addAttribute, deleteAttribute, addTerm, deleteTerm,
+      attributes, terms,
+      galleryImages, uploadImage, deleteImage
     }}>
       {children}
     </AppContext.Provider>
