@@ -395,7 +395,7 @@ const importProducts = async (newProducts: Product[]) => {
       isAssistantOpen, assistantMode, openAssistant, closeAssistant, toggleAssistant,
       login, register, logout, addToCart, removeFromCart, updateCartQuantity, clearCart, placeOrder, updateOrderStatus,
       addProduct, importProducts, updateProduct, deleteProduct,
-      addCategory, deleteCategory,updateCategory,addAttribute, deleteAttribute, addTerm, deleteTerm,
+      addCategory, deleteCategory,updateCategory,addAttribute, deleteAttribute, addTerm, deleteTerm,attributes, terms
     }}>
       {children}
     </AppContext.Provider>

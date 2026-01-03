@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo,useEffect } from 'react';
 import { X, Search, ChevronRight, ChevronDown, Folder, Package, Filter, CheckSquare, Square, Tag } from 'lucide-react';
 import { useStore } from '../store';
 import { ProductCard } from '../components/ProductCard';
 import { CategoryItem } from '../types';
 
-// --- Tree Component ---
+// --- Recursive Tree Node Component ---
 interface TreeNodeProps {
   node: CategoryItem;
   allCategories: CategoryItem[];
@@ -31,23 +31,44 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, allCategories, level, selecte
         onClick={(e) => { e.stopPropagation(); onToggle(node.id); }}
       >
         <div className="flex items-center overflow-hidden">
+            {/* Expand Toggle */}
             <button 
                 onClick={(e) => { e.stopPropagation(); toggleExpand(node.id); }}
                 className={`p-1 mr-1 rounded hover:bg-slate-200 text-slate-400 transition ${hasChildren ? '' : 'invisible'}`}
             >
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
+            
+            {/* Checkbox */}
             <div className={`mr-2 transition ${isSelected ? 'text-orange-600' : 'text-slate-300 group-hover:text-slate-400'}`}>
                 {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
             </div>
+            
+            {/* Label */}
             <span className={`text-sm truncate transition ${isSelected ? 'text-orange-700 font-bold' : 'text-slate-700'}`}>{node.name}</span>
         </div>
-        <span className="text-xs text-slate-400 bg-slate-100 px-1.5 rounded-full">{count}</span>
+        
+        {/* Counter */}
+        <span className={`text-xs px-2 py-0.5 rounded-full ${count > 0 ? 'bg-slate-100 text-slate-500 font-medium' : 'bg-slate-50 text-slate-300'}`}>
+            {count}
+        </span>
       </div>
+
+      {/* Children */}
       {isExpanded && children.length > 0 && (
         <div className="border-l border-slate-100 ml-4">
           {children.map(child => (
-            <TreeNode key={child.id} node={child} allCategories={allCategories} level={level + 1} selectedIds={selectedIds} onToggle={onToggle} expandedIds={expandedIds} toggleExpand={toggleExpand} counts={counts}/>
+            <TreeNode 
+                key={child.id} 
+                node={child} 
+                allCategories={allCategories} 
+                level={level + 1} 
+                selectedIds={selectedIds} 
+                onToggle={onToggle} 
+                expandedIds={expandedIds} 
+                toggleExpand={toggleExpand} 
+                counts={counts}
+            />
           ))}
         </div>
       )}
@@ -59,12 +80,13 @@ export const Catalog = () => {
   const { products, categories, attributes, terms } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [selectedTermIds, setSelectedTermIds] = useState<string[]>([]); // Selected Attributes
+  const [selectedTermIds, setSelectedTermIds] = useState<string[]>([]);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const rootNodes = useMemo(() => categories.filter(c => !c.parentId), [categories]);
 
+  // Helper: Get all descendant IDs for a category (used for Filtering)
   const getDescendantIds = (parentId: string): string[] => {
       const children = categories.filter(c => c.parentId === parentId);
       let ids = [parentId];
@@ -72,17 +94,52 @@ export const Catalog = () => {
       return ids;
   };
 
-  // --- FILTERING & COUNTER LOGIC ---
+  useEffect(() => {
+      // Find all categories that have children and add them to expandedIds
+      if (categories.length > 0) {
+          const parentIds = categories
+              .filter(c => categories.some(child => child.parentId === c.id))
+              .map(c => c.id);
+          
+          // Use a set to avoid duplicates if this runs multiple times
+          setExpandedIds(prev => Array.from(new Set([...prev, ...parentIds])));
+      }
+  }, [categories]);
+  // --- FILTERING & LOGIC ---
   const { filteredProducts, termCounts, categoryCounts, availableAttributes } = useMemo(() => {
       
-      // 1. Base Filter (Search)
+      // 1. Base List (Filtered by Search Text only)
+      // We calculate "Category Counts" based on this list so users can see the structure even if unfiltered
       let baseList = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      // 2. Category Filter (Recursive)
-      // We calculate "Attribute Availability" based on this set (Category Filtered)
+      // --- CALCULATE CATEGORY COUNTS (WITH ACCUMULATION) ---
+      const categoryCounts: Record<string, number> = {};
+      const catMap = new Map(categories.map(c => [c.id, c]));
+
+      baseList.forEach(p => {
+          // Track which categories we've already incremented for this specific product to avoid double counting
+          const processedCats = new Set<string>(); 
+          
+          p.categoryIds?.forEach(cid => {
+              let currentId: string | undefined | null = cid;
+              // Traverse UP the tree from the assigned category to the Root
+              while (currentId) {
+                  if (!processedCats.has(currentId)) {
+                      categoryCounts[currentId] = (categoryCounts[currentId] || 0) + 1;
+                      processedCats.add(currentId);
+                  }
+                  const cat = catMap.get(currentId);
+                  currentId = cat?.parentId; // Move up
+              }
+          });
+      });
+
+      // 2. Apply Category Filter
+      // We calculate "Attribute Counts" based on this filtered set
       let categoryFiltered = baseList;
       if (selectedCategoryIds.length > 0) {
           const allowedCatIds = new Set<string>();
+          // If a parent is selected, include all its children
           selectedCategoryIds.forEach(id => getDescendantIds(id).forEach(d => allowedCatIds.add(d)));
           
           categoryFiltered = baseList.filter(p => {
@@ -91,18 +148,10 @@ export const Catalog = () => {
           });
       }
 
-      // 3. Calculate Counters & Available Attributes
-      // We do this BEFORE filtering by attributes so the user sees all options relevant to the current Category
+      // --- CALCULATE ATTRIBUTE/TERM COUNTS ---
       const termCounts: Record<string, number> = {};
-      const categoryCounts: Record<string, number> = {};
       const activeAttrIds = new Set<string>();
 
-      // Count categories (global scope within search)
-      baseList.forEach(p => {
-          p.categoryIds?.forEach(cid => categoryCounts[cid] = (categoryCounts[cid] || 0) + 1);
-      });
-
-      // Count terms & identify active attributes (scope within selected category)
       categoryFiltered.forEach(p => {
           p.termIds?.forEach(tid => {
               termCounts[tid] = (termCounts[tid] || 0) + 1;
@@ -111,17 +160,18 @@ export const Catalog = () => {
           });
       });
 
-      const availableAttributes = attributes?.filter(a => activeAttrIds.has(a.id));
+      // Only show attributes that have at least one active term in the current view
+      const availableAttributes = attributes.filter(a => activeAttrIds.has(a.id));
 
-      // 4. Final Attribute Filter (AND logic between attributes, OR logic within attribute)
+      // 3. Final Filter (Apply Attribute Terms)
       let finalList = categoryFiltered;
       
-      // Group selected terms by attribute
-      const selectedAttributes = attributes?.filter(attr => 
+      // Group selected terms by attribute to apply AND logic between attributes
+      const selectedAttributes = attributes.filter(attr => 
           terms.some(t => t.attributeId === attr.id && selectedTermIds.includes(t.id))
       );
 
-      if (selectedAttributes?.length > 0) {
+      if (selectedAttributes.length > 0) {
           finalList = finalList.filter(p => {
               // Product must match AT LEAST ONE selected term for EVERY selected attribute group
               return selectedAttributes.every(attr => {
@@ -158,13 +208,13 @@ export const Catalog = () => {
           </div>
 
           <div className="space-y-6 sticky top-24">
-            {/* Search */}
+            {/* Search Input */}
             <div className="relative">
                 <input type="text" placeholder="Търсене..." className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl pl-10 focus:ring-2 focus:ring-orange-500 outline-none transition shadow-sm font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 <Search size={18} className="absolute left-3 top-3.5 text-slate-400" />
             </div>
 
-            {/* Categories */}
+            {/* Tree Filter Component */}
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                     <label className="font-bold text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2"><Folder size={14}/> Категории</label>
@@ -172,13 +222,24 @@ export const Catalog = () => {
                 </div>
                 <div className="space-y-1">
                     {rootNodes.map(node => (
-                        <TreeNode key={node.id} node={node} allCategories={categories} level={0} selectedIds={selectedCategoryIds} onToggle={toggleCategory} expandedIds={expandedIds} toggleExpand={toggleExpand} counts={categoryCounts}/>
+                        <TreeNode 
+                            key={node.id} 
+                            node={node} 
+                            allCategories={categories} 
+                            level={0} 
+                            selectedIds={selectedCategoryIds} 
+                            onToggle={toggleCategory} 
+                            expandedIds={expandedIds} 
+                            toggleExpand={toggleExpand} 
+                            counts={categoryCounts}
+                        />
                     ))}
+                    {rootNodes.length === 0 && <div className="text-sm text-slate-400 italic">Няма категории.</div>}
                 </div>
             </div>
 
-            {/* Dynamic Attributes */}
-            {availableAttributes?.map(attr => (
+            {/* Dynamic Attributes Filters */}
+            {availableAttributes.map(attr => (
                 <div key={attr.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm animate-fade-in">
                     <div className="flex justify-between items-center mb-3">
                         <label className="font-bold text-xs text-slate-400 uppercase tracking-widest flex items-center gap-2"><Tag size={14}/> {attr.name}</label>
@@ -201,14 +262,14 @@ export const Catalog = () => {
           </div>
         </div>
 
-        {/* Overlay */}
+        {/* Mobile Overlay */}
         {filtersOpen && <div className="fixed inset-0 bg-neutral-900/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setFiltersOpen(false)}></div>}
 
-        {/* Grid */}
+        {/* Product Grid */}
         <div className="flex-grow">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-4xl font-heading font-bold text-neutral-900 uppercase">
-                {selectedCategoryIds.length === 1 ? categories.find(c => c.id === selectedCategoryIds[0])?.name : 'Продукти'} 
+                {selectedCategoryIds.length === 1 ? categories.find(c => c.id === selectedCategoryIds[0])?.name : (selectedCategoryIds.length > 1 ? 'Избрани' : 'Продукти')} 
                 <span className="text-orange-500 text-2xl align-top ml-2">{filteredProducts.length}</span>
             </h2>
             <button className="md:hidden flex items-center gap-2 bg-neutral-900 text-white px-4 py-2 rounded-lg shadow-lg" onClick={() => setFiltersOpen(true)}><Filter size={18} /></button>
@@ -221,7 +282,7 @@ export const Catalog = () => {
           ) : (
             <div className="text-center py-32 text-slate-400 bg-white rounded-3xl border-2 border-dashed border-slate-200">
               <Package size={64} className="mx-auto mb-6 text-slate-200" />
-              <p className="text-lg">Няма намерени продукти.</p>
+              <p className="text-lg">Няма намерени продукти по тези критерии.</p>
               <button onClick={() => { setSearchTerm(''); setSelectedCategoryIds([]); setSelectedTermIds([]); }} className="mt-4 text-orange-600 font-bold hover:underline">Покажи всички</button>
             </div>
           )}
