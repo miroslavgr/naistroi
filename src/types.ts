@@ -1,3 +1,15 @@
+export interface Attribute {
+  id: string;
+  name: string; // e.g. "Color", "Material", "Size"
+}
+
+export interface Term {
+  id: string;
+  attributeId: string; // Links to parent Attribute
+  name: string; // e.g. "Red", "Concrete", "25kg"
+}
+
+
 export interface Product {
   id: string;
   name: string;
@@ -7,6 +19,8 @@ export interface Product {
   image: string;
   description: string;
   stock: number;
+  categoryIds: string[];
+  termIds: string[];
 }
 
 export interface CartItem extends Product {
@@ -32,12 +46,14 @@ export interface User {
   phone?: string;
   address?: string;
   role: 'user' | 'admin';
+  cart?: CartItem[];
 }
 
 export interface CategoryItem {
   id: string;
   name: string;
-  type: 'category' | 'brand';
+  type: 'root' | 'child';
+  parentId?: string | null;
 }
 
 export interface CheckoutFormData {
@@ -51,3 +67,4 @@ export interface AudioBlob {
   data: string;
   mimeType: string;
 }
+

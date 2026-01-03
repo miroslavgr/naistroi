@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, FunctionDeclaration, Type, Chat } from '@google/genai';
 import { Mic, MicOff, PhoneCall, X, ChevronDown, ChevronUp, MessageSquare, Send, Sparkles, Activity, Phone, ExternalLink, Loader2, Volume2, Waves } from 'lucide-react';
 import { useStore } from '../store';
-import { base64ToUint8Array, createPcmBlob, decodeAudioData } from '../utils/audioUtils';
+import { base64ToUint8Array, createPcmBlob, decodeAudioData } from '../../utils/audioUtils';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface ChatMessage {

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // TODO: Replace with your actual Firebase project config
 // Go to Firebase Console -> Project Settings -> General -> "Your apps"
@@ -16,3 +17,4 @@ import { getFirestore } from "firebase/firestore";
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
+export const auth = getAuth(app);

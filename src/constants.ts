@@ -1,0 +1,1 @@
+export const BGN_RATE = 1.95583;
