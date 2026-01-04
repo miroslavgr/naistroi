@@ -26,6 +26,8 @@ export interface Product {
   stock: number;
   categoryIds: string[];
   termIds: string[];
+  type?: 'service' | 'product';
+  aiContext?: string; // Hidden field for AI personality/instructions
 }
 
 export interface CartItem extends Product {
@@ -72,4 +74,3 @@ export interface AudioBlob {
   data: string;
   mimeType: string;
 }
-

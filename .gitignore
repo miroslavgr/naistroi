@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Editor directories and filesgit rm --cached functions/service-account-key.json
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+functions/service-account-key.json

@@ -185,10 +185,9 @@ export const VoiceAssistant: React.FC = () => {
         }
         return { result: "Updated checkout form inputs with user data." };
     }
-else if (name === 'confirmOrder') {
+    else if (name === 'confirmOrder') {
         const currentData = formDataRef.current;
         
-        // Optional: Keep the guardrail I gave you earlier
         if (cartRef.current.length === 0) {
              return { result: "Error: The cart is empty..." };
         }
@@ -197,14 +196,10 @@ else if (name === 'confirmOrder') {
              return { result: "Error: Missing details..." };
         }
 
-        // --- CHANGE THIS LINE ---
-        // OLD: await placeOrder(currentData);
-        // NEW:
         await placeOrderRef.current(currentData); 
-        // ------------------------
 
         return { result: "Order placed successfully! The thank you screen is shown." };
-    }30000
+    }
     return { result: 'Unknown tool' };
   };
   
@@ -219,11 +214,13 @@ else if (name === 'confirmOrder') {
     setIsTyping(true);
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+        if (!apiKey) throw new Error("Missing API Key");
+
+        const ai = new GoogleGenAI({ apiKey });
         const chat = ai.chats.create({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.0-flash-exp',
             config: {
-                // Simplified system instruction for text mode
                 systemInstruction: `You are Ivan, a male construction assistant. Help with products and orders.`,
                 tools: [{functionDeclarations: tools}]
             }
@@ -266,13 +263,16 @@ else if (name === 'confirmOrder') {
 
   // --- VOICE SESSION HANDLER ---
   const startSession = async () => {
-    if (!process.env.API_KEY) return;
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    if (!apiKey) {
+        console.error("API Key not found!");
+        return;
+    }
     if (activeVoice) return;
 
     try {
       setConnecting(true);
       
-      // Dynamic System Instruction with Cart Context
       const currentCart = cartRef.current;
       const cartSummary = currentCart.length > 0 
         ? currentCart.map(i => `${i.quantity}x ${i.name} (€${i.price})`).join(', ') 
@@ -309,7 +309,7 @@ else if (name === 'confirmOrder') {
           setMessages([{ role: 'model', text: 'Здравейте! Аз съм Иван. С какво мога да помогна за строежа?' }]);
       }
       
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       
       // Init Audio Contexts
       inputContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
@@ -319,7 +319,7 @@ else if (name === 'confirmOrder') {
       
       // Connect to Gemini Live
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-2.5-flash-native-audio-preview-09-2025', 
         callbacks: {
           onopen: () => {
             console.log('Gemini Live Connected');
@@ -396,7 +396,6 @@ else if (name === 'confirmOrder') {
             // Tools
             if (msg.toolCall) {
               for (const call of msg.toolCall.functionCalls) {
-                // Use the Ref-aware execute function
                 const result = await executeTool(call.name, call.args);
                 sessionPromise.then(session => session.sendToolResponse({
                   functionResponses: {
@@ -411,6 +410,9 @@ else if (name === 'confirmOrder') {
           onclose: () => cleanupVoice(),
           onerror: (err) => {
             console.error(err);
+            if (err.message && (err.message.includes('Permission denied') || err.message.includes('NotAllowedError') || (err as any).name === 'NotAllowedError')) {
+                alert("Microphone access denied. Please enable microphone permissions in your browser settings (click the lock icon in the address bar).");
+            }
             cleanupVoice();
           }
         },
@@ -424,10 +426,13 @@ else if (name === 'confirmOrder') {
         }
       });
       sessionRef.current = await sessionPromise;
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setConnecting(false);
       setActiveVoice(false);
+      if (e.message && (e.message.includes('Permission denied') || e.message.includes('NotAllowedError') || e.name === 'NotAllowedError')) {
+          alert("Microphone access denied. Please enable microphone permissions in your browser settings (click the lock icon in the address bar).");
+      }
     }
   };
 

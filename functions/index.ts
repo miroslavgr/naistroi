@@ -1,65 +1,80 @@
-import * as functions from "firebase-functions";
+import {onRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { google } from "googleapis";
 
 admin.initializeApp();
 
-// Load your service account key file (save this file in your functions folder)
-const key = require("./service-account-key.json");
+// 1. GENERATE FEED FUNCTION (Universal Product Feed)
+export const generateProductFeed = onRequest(
+  { region: "us-central1" },
+  async (req, res) => {
+    try {
+      const productsSnapshot = await admin.firestore().collection("products").get();
+      
+      // TSV Header
+      let tsv = "id\ttitle\tdescription\tlink\timage_link\tavailability\tprice\tbrand\tcondition\tgoogle_product_category\n";
+      
+      productsSnapshot.forEach(doc => {
+        const p = doc.data();
+        const price = `${p.price} BGN`;
+        const availability = p.stock > 0 ? "in stock" : "out of stock";
+        const link = `https://naistroi.com/product/${doc.id}`; 
+        
+        const desc = (p.description || "No description").replace(/[\t\n\r]/g, " ");
+        const title = (p.name || "Untitled").replace(/[\t\n\r]/g, " ");
+        const brand = (p.brand || "Naistroi").replace(/[\t\n\r]/g, " ");
 
-const content = google.content("v2.1");
-
-// Authenticate with Google
-const authClient = new google.auth.JWT({
-  email: key.client_email,
-  key: key.private_key,
-  scopes: ["https://www.googleapis.com/auth/content"],
-});
-
-export const syncProductToMerchantCenter = functions.firestore
-  .document("products/{productId}")
-  .onWrite(async (change, context) => {
-    const productId = context.params.productId;
-    const product = change.after.exists ? change.after.data() : null;
-
-    await authClient.authorize();
-
-    // 1. DELETE if the product was removed from Firestore
-    if (!product) {
-      console.log(`Deleting product ${productId} from Merchant Center`);
-      await content.products.delete({
-        auth: authClient,
-        merchantId: "YOUR_MERCHANT_ID", // Replace with your MC ID
-        productId: `online:bg:BG:${productId}`, // Format: channel:language:country:id
+        tsv += `${doc.id}\t${title}\t${desc}\t${link}\t${p.image}\t${availability}\t${price}\t${brand}\tnew\t632\n`;
       });
-      return;
+
+      res.header("Content-Type", "text/tab-separated-values");
+      res.status(200).send(tsv);
+    } catch (error) {
+      console.error("Error generating feed:", error);
+      res.status(500).send("Error generating feed");
     }
+  }
+);
 
-    // 2. INSERT/UPDATE if product exists
-    const offer = {
-      offerId: productId,
-      title: product.name,
-      description: product.description || "No description",
-      link: `https://your-site.com/product/${productId}`,
-      imageLink: product.image,
-      contentLanguage: "bg",
-      targetCountry: "BG",
-      feedLabel: "BG",
-      channel: "online",
-      availability: product.stock > 0 ? "in stock" : "out of stock",
-      price: {
-        value: product.price,
-        currency: "BGN", // Use BGN for Bulgaria
-      },
-      condition: "new",
-      // Map your categories here if needed
-      googleProductCategory: "Hardware > Building Materials", 
-    };
+// 2. GENERATE GOOGLE ADS KEYWORDS (CSV for Import)
+export const generateGoogleAdsKeywords = onRequest(
+  { region: "us-central1" },
+  async (req, res) => {
+    try {
+      const productsSnapshot = await admin.firestore().collection("products").get();
+      
+      // CSV Header for Google Ads Editor
+      // Columns: Campaign, Ad Group, Keyword, Criterion Type
+      let csv = "Campaign,Ad Group,Keyword,Criterion Type\n";
+      
+      productsSnapshot.forEach(doc => {
+        const p = doc.data();
+        // Clean the name to be safe for CSV (remove commas)
+        const rawName = p.name || "";
+        const cleanName = rawName.replace(/[",]/g, "").trim();
+        
+        if (!cleanName) return;
 
-    console.log(`Uploading product ${productId} to Merchant Center`);
-    await content.products.insert({
-      auth: authClient,
-      merchantId: "YOUR_MERCHANT_ID",
-      requestBody: offer,
-    });
-  });
+        const campaign = "Naistroi Products";
+        const adGroup = cleanName; // One Ad Group per product for high relevance
+
+        // List of keywords to generate for this product - ONLY the product name
+        const keywords = [
+          cleanName
+        ];
+
+        // Add each keyword to the CSV with "Phrase" match type (safer than Broad)
+        keywords.forEach(kw => {
+             csv += `${campaign},${adGroup},${kw},Phrase\n`;
+        });
+      });
+
+      // Force download as a CSV file
+      res.header("Content-Type", "text/csv; charset=utf-8");
+      res.header("Content-Disposition", "attachment; filename=google_ads_keywords.csv");
+      res.status(200).send(csv);
+    } catch (error) {
+      console.error("Error generating keywords CSV:", error);
+      res.status(500).send("Error generating keywords CSV");
+    }
+  }
+);

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Link as LinkIcon, Upload, Plus, Edit, Trash2, X, FolderTree, 
-  CheckSquare, Square, Tag, Image as ImageIcon, Bot, Info, CheckCircle2 
+  CheckSquare, Square, Tag, Image as ImageIcon, Bot, Info, CheckCircle2,
+  Download, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useStore } from '../../store';
@@ -37,7 +38,7 @@ export const ProductsTab = () => {
     };
 
     const handleAddClick = () => {
-        setProdForm({ name: '', price: 0, stock: 0, image: '', description: '', categoryIds: [], termIds: [] });
+        setProdForm({ name: '', price: 0, stock: 0, image: '', description: '', categoryIds: [], termIds: [], type: 'product', aiContext: '' });
         setIsAdding(true);
     };
 
@@ -117,7 +118,7 @@ export const ProductsTab = () => {
                 const title = doc.querySelector('h1')?.innerText?.trim() || "Unknown Product";
                 const price = parseFloat(doc.querySelector('.price, .product-price')?.textContent?.replace(/[^0-9.]/g, '') || "0");
                 const image = doc.querySelector('#image, .product-image img')?.getAttribute('src') || "";
-                setFoundProducts([{ name: title, price: price > 0 ? price/1.95 : 0, image, categoryIds: [], termIds: [], stock: 100 }]);
+                setFoundProducts([{ name: title, price: price > 0 ? price/1.95 : 0, image, categoryIds: [], termIds: [], stock: 100, type: 'product', aiContext: '' }]);
                 setSelectedProducts([0]);
                 setTimeout(() => setImportStep('review'), 800);
             } else {
@@ -132,7 +133,7 @@ export const ProductsTab = () => {
                 });
                 let text = response.text().replace(/```json|```/g, '').trim();
                 if (text.startsWith('`')) text = text.slice(3, -3); 
-                const products = JSON.parse(text).map((p:any) => ({...p, categoryIds: [], termIds: [], stock: 100 }));
+                const products = JSON.parse(text).map((p:any) => ({...p, categoryIds: [], termIds: [], stock: 100, type: 'product', aiContext: '' }));
                 setFoundProducts(products);
                 setSelectedProducts(products.map((_:any, i:number) => i));
                 setImportStep('review');
@@ -148,7 +149,16 @@ export const ProductsTab = () => {
 
     return (
         <div>
-            <div className="flex justify-end gap-3 mb-6">
+            <div className="flex justify-end gap-3 mb-6 flex-wrap">
+                <a 
+                    href="https://us-central1-naistroi.cloudfunctions.net/generateGoogleAdsKeywords" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-blue-700 transition shadow-lg flex items-center gap-2"
+                    title="Generate fresh keywords from current products"
+                >
+                    <RefreshCw size={16} /> Generate Ads Keywords
+                </a>
                 <button onClick={handleAddClick} className="bg-neutral-100 px-4 py-2 rounded-lg font-bold text-xs uppercase"><Plus size={16} className="inline"/> Ръчно</button>
                 <button onClick={() => { setIsImporting(true); setImportMode('single'); setImportStep('input'); setImportUrl(''); }} className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-orange-700 transition shadow-lg"><LinkIcon size={16} /> Единичен (Fast)</button>
                 <button onClick={() => { setIsImporting(true); setImportMode('bulk'); setImportStep('input'); setImportUrl(''); }} className="bg-neutral-900 text-white px-4 py-2 rounded-lg font-bold uppercase text-xs hover:bg-neutral-800 transition shadow-lg"><Upload size={16} /> Масов (AI)</button>
@@ -160,7 +170,11 @@ export const ProductsTab = () => {
                         <img src={p.image} alt={p.name} className="w-16 h-16 object-cover rounded-lg bg-slate-100" />
                         <div className="flex-grow text-center sm:text-left">
                             <div className="font-bold text-neutral-900">{p.name}</div>
-                            <div className="text-sm text-slate-500">{p.brand} • {p.category} • <span className="text-orange-600 font-bold">€{p.price.toFixed(2)}</span></div>
+                            <div className="text-sm text-slate-500">
+                                {p.brand} • {p.category} • <span className="text-orange-600 font-bold">€{p.price.toFixed(2)}</span>
+                                <span className="ml-2 px-2 py-0.5 rounded text-xs bg-gray-200">{p.type || 'unknown'}</span>
+                                {p.aiContext && <span className="ml-2 inline-flex items-center gap-1 text-blue-500 font-bold text-[10px] bg-blue-50 px-1.5 rounded"><Bot size={10}/> AI Context</span>}
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={() => handleEditClick(p)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition"><Edit size={20} /></button>
@@ -187,19 +201,45 @@ export const ProductsTab = () => {
                                         <input type="number" className="w-full p-3 border rounded-xl" placeholder="Наличност" value={prodForm.stock || ''} onChange={e => setProdForm({...prodForm, stock: parseInt(e.target.value)})} />
                                     </div>
                                     
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Тип на записа</label>
+                                        <select 
+                                            className="w-full p-3 border rounded-xl bg-white"
+                                            value={prodForm.type || 'product'}
+                                            onChange={e => setProdForm({...prodForm, type: e.target.value as 'product' | 'service'})}
+                                        >
+                                            <option value="product">Физически Продукт</option>
+                                            <option value="service">Строителна Услуга</option>
+                                        </select>
+                                    </div>
+
                                     {/* Image Selector with Gallery */}
                                     <div className="flex gap-2">
                                         <input className="w-full p-3 border rounded-xl" placeholder="URL на изображение" value={prodForm.image || ''} onChange={e => setProdForm({...prodForm, image: e.target.value})} />
                                         <button onClick={() => setShowGallerySelector(true)} className="bg-slate-100 p-3 rounded-xl hover:bg-slate-200" title="Избери от галерия"><ImageIcon/></button>
                                     </div>
 
-                                    <textarea className="w-full p-3 border rounded-xl" rows={4} placeholder="Описание" value={prodForm.description || ''} onChange={e => setProdForm({...prodForm, description: e.target.value})} />
+                                    <textarea className="w-full p-3 border rounded-xl" rows={3} placeholder="Публично описание" value={prodForm.description || ''} onChange={e => setProdForm({...prodForm, description: e.target.value})} />
+                                    
+                                    {/* AI CONTEXT FIELD - ONLY FOR SERVICES */}
+                                    {prodForm.type === 'service' && (
+                                        <div className="space-y-1 border-t pt-4">
+                                            <label className="text-[10px] font-bold text-blue-500 uppercase ml-1 flex items-center gap-1"><MessageSquare size={10}/> AI Контекст (Инструкции за Иван)</label>
+                                            <textarea 
+                                                className="w-full p-3 border border-blue-200 rounded-xl bg-blue-50/30 text-sm italic" 
+                                                rows={4} 
+                                                placeholder="Напиши как Иван трябва да продава тази услуга, какви въпроси да задава и т.н." 
+                                                value={prodForm.aiContext || ''} 
+                                                onChange={e => setProdForm({...prodForm, aiContext: e.target.value})} 
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="space-y-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar border-l pl-4">
                                     {/* Categories */}
                                     <div className="border rounded-xl p-4 bg-slate-50">
-                                        <label className="text-xs font-bold text-slate-400 uppercase mb-3 block flex items-center gap-2"><FolderTree size={14}/> Категории (По една от група)</label>
+                                        <label className="text-xs font-bold text-slate-400 uppercase mb-3 block flex items-center gap-2"><FolderTree size={14}/> Категории</label>
                                         {categories?.filter(c => !c.parentId).map(root => (
                                             <div key={root.id} className="mb-3">
                                                 <div className="flex items-center gap-2 font-bold cursor-pointer hover:text-orange-600" onClick={() => toggleProductCategory(root.id)}>

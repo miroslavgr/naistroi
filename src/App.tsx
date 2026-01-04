@@ -12,6 +12,8 @@ import { Checkout } from './pages/Checkout';
 import { Login } from './pages/Login';
 import { Contacts } from './pages/Contacts';
 import { Admin } from './pages/Admin';
+import { Services } from './pages/Services';
+import { ServiceDetails } from './pages/ServiceDetails';
 
 export const App = () => {
   return (
@@ -24,6 +26,8 @@ export const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<Catalog />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/service/:id" element={<ServiceDetails />} />
             <Route path="/product/:id" element={<ProductDetails />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/login" element={<Login />} />

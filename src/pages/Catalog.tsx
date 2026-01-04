@@ -84,7 +84,24 @@ export const Catalog = () => {
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const rootNodes = useMemo(() => categories.filter(c => !c.parentId), [categories]);
+  // Filter root nodes that are NOT services
+  // We assume services are identified by type 'service' or fallback logic
+  const serviceKeywords = ['услуги', 'services', 'ремонти', 'монтажи', 'под наем', 'сигурност', 'строителство'];
+
+  const filteredProductsByRole = useMemo(() => {
+    return products.filter(p => {
+        // Exclude if it is EXPLICITLY a service
+        if (p.type === 'service') return false;
+        
+        // Exclude if it matches legacy service keywords AND is not explicitly a product
+        // (If we had a 'type'='product', we would keep it. But legacy data has no type.)
+        const matchesServiceKeyword = serviceKeywords.some(k => p.category?.toLowerCase().includes(k));
+        if (matchesServiceKeyword && !p.type) return false;
+
+        return true;
+    });
+  }, [products]);
+
 
   // Helper: Get all descendant IDs for a category (used for Filtering)
   const getDescendantIds = (parentId: string): string[] => {
@@ -93,6 +110,18 @@ export const Catalog = () => {
       children.forEach(child => ids = [...ids, ...getDescendantIds(child.id)]);
       return ids;
   };
+  
+  // Filter out categories that are purely for services (if possible)
+  // This is tricky without metadata on categories, but we can try to filter root nodes
+  const rootNodes = useMemo(() => {
+    return categories.filter(c => {
+         if (c.parentId) return false;
+         // Optional: Hide categories that match service keywords if you want to be strict
+         // if (serviceKeywords.some(k => c.name.toLowerCase().includes(k))) return false;
+         return true;
+    });
+  }, [categories]);
+
 
   useEffect(() => {
       // Find all categories that have children and add them to expandedIds
@@ -110,7 +139,7 @@ export const Catalog = () => {
       
       // 1. Base List (Filtered by Search Text only)
       // We calculate "Category Counts" based on this list so users can see the structure even if unfiltered
-      let baseList = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      let baseList = filteredProductsByRole.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // --- CALCULATE CATEGORY COUNTS (WITH ACCUMULATION) ---
       const categoryCounts: Record<string, number> = {};
@@ -189,7 +218,7 @@ export const Catalog = () => {
           categoryCounts,
           availableAttributes 
       };
-  }, [products, searchTerm, selectedCategoryIds, selectedTermIds, categories, attributes, terms]);
+  }, [filteredProductsByRole, searchTerm, selectedCategoryIds, selectedTermIds, categories, attributes, terms]);
 
   // Handlers
   const toggleCategory = (id: string) => setSelectedCategoryIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

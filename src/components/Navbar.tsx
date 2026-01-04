@@ -28,6 +28,7 @@ export const Navbar = () => {
         <div className="hidden md:flex items-center gap-8 font-medium uppercase text-sm tracking-wider">
           <Link to="/" className={`transition duration-300 ${isActive('/')}`}>Начало</Link>
           <Link to="/products" className={`transition duration-300 ${isActive('/products')}`}>Продукти</Link>
+          <Link to="/services" className={`transition duration-300 ${isActive('/services')}`}>Услуги</Link>
           <Link to="/contacts" className={`transition duration-300 ${isActive('/contacts')}`}>Контакти</Link>
           <button onClick={(e) => { e.preventDefault(); openAssistant('voice'); }} className="flex items-center gap-1 text-orange-500 hover:text-white transition group">
             <Bot size={18} className="group-hover:animate-bounce" /> 
@@ -69,6 +70,7 @@ export const Navbar = () => {
         <div className="px-6 py-8 space-y-6 font-heading text-xl tracking-wide flex flex-col items-center text-center">
           <Link to="/" className="block py-2 w-full border-b border-white/5 hover:text-orange-500 transition" onClick={() => setMenuOpen(false)}>Начало</Link>
           <Link to="/products" className="block py-2 w-full border-b border-white/5 hover:text-orange-500 transition" onClick={() => setMenuOpen(false)}>Продукти</Link>
+          <Link to="/services" className="block py-2 w-full border-b border-white/5 hover:text-orange-500 transition" onClick={() => setMenuOpen(false)}>Услуги</Link>
           <Link to="/contacts" className="block py-2 w-full border-b border-white/5 hover:text-orange-500 transition" onClick={() => setMenuOpen(false)}>Контакти</Link>
           <button onClick={() => { openAssistant('voice'); setMenuOpen(false); }} className="block py-4 w-full text-center bg-orange-600 rounded-xl text-white font-bold shadow-lg shadow-orange-900/50 mt-4">
              <Mic size={20} className="inline mr-2"/> AI Асистент

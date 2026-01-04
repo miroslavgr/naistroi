@@ -31,8 +31,8 @@ export const Footer = () => (
       <div>
         <h3 className="text-white text-lg font-heading font-bold mb-6 uppercase tracking-wider border-b-2 border-orange-600 w-fit pb-1">Контакти</h3>
         <ul className="space-y-4 text-sm">
-          <li className="flex items-start gap-3"><MapPin className="text-orange-500 shrink-0 mt-0.5" size={16} /><span>с. Вакарел, Индустриална зона<br/>(10км от София)</span></li>
-          <li className="flex items-center gap-3"><Phone className="text-orange-500 shrink-0" size={16} /><a href="tel:+359888123456" className="hover:text-white transition">+359 888 123 456</a></li>
+          <li className="flex items-start gap-3"><MapPin className="text-orange-500 shrink-0 mt-0.5" size={16} /><span>с. Нови Хан, Индустриална зона</span></li>
+          <li className="flex items-center gap-3"><Phone className="text-orange-500 shrink-0" size={16} /><a href="tel:+359884045444" className="hover:text-white transition">0884 045 444</a></li>
           <li className="flex items-center gap-3"><Mail className="text-orange-500 shrink-0" size={16} /><a href="mailto:office@naistroitrans.bg" className="hover:text-white transition">office@naistroitrans.bg</a></li>
         </ul>
       </div>
